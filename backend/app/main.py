@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 from .api import upload
 from .db.session import engine
 from .db import models
 
 app = FastAPI(title="Chest X-ray AI Viewer - Backend")
+
+STATIC_DIR = os.environ.get("STATIC_DIR", "static")
+if not os.path.isdir(STATIC_DIR):
+    os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.add_middleware(
     CORSMiddleware,

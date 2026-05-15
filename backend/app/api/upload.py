@@ -1,7 +1,7 @@
 import os
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from ..utils.dicom import dicom_to_numpy, save_png_from_array
+from ..utils.dicom import load_image, save_png_from_array
 from ..ai.predictor import Predictor
 from ..db.session import SessionLocal
 from ..db import models
@@ -28,9 +28,9 @@ def upload_dicom(file: UploadFile = File(...)):
         f.write(file.file.read())
 
     try:
-        img = dicom_to_numpy(path)
+        img = load_image(path)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid DICOM: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
     # Save PNG preview
     png_path = os.path.join(STATIC_DIR, f"{uid}.png")
@@ -50,7 +50,7 @@ def upload_dicom(file: UploadFile = File(...)):
     session = SessionLocal()
     study = models.Study(
         filename=filename,
-        metadata=json.dumps({}),
+        metadata_json=json.dumps({}),
         prediction=result.get("label"),
         score=float(result.get("score", 0.0)),
     )

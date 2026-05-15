@@ -102,3 +102,109 @@ docker compose up --build
 
 ---
 This file summarizes major design decisions; further phase-by-phase detailed docs and in-file comments are present in source files.
+
+## Implementation Log — Interview Format
+
+The following is a chronological, interview-ready log of what was implemented, why each change was made, the problems that were fixed, and the alternatives considered.
+
+1) Project scaffold and environment
+- What: Added `.gitignore` and `requirements.txt` to establish a reproducible developer environment.
+- Files: `.gitignore`, `requirements.txt`
+- Why: Provide a consistent base for dependency installation and avoid committing local artifacts. Chose pinned `requirements.txt` for simplicity and reproducibility during the demo.
+
+2) Backend skeleton with FastAPI
+- What: Implemented a FastAPI app with CORS and a health endpoint.
+- Files: `backend/app/main.py`
+- Problem fixed: No existing API; needed a typed API surface for uploads and health checks.
+- Why FastAPI: typed validation (Pydantic), async support, and automatic docs are valuable in interviews and production.
+
+3) Upload API and database model
+- What: Added `/api/upload` endpoint to accept file uploads and persist study records.
+- Files: `backend/app/api/upload.py`, `backend/app/db/models.py`, `backend/app/db/session.py`
+- Problem fixed: Needed persistence for uploads and predictions. Initially used `metadata` as a model attribute, which triggered a SQLAlchemy `InvalidRequestError` (reserved name). Renamed it to `metadata_json` to fix the crash.
+- Why SQLAlchemy/Postgres: relational DBs map naturally to study metadata and support realistic production scenarios. Postgres chosen in `docker-compose.yml` to mirror a production-like environment.
+
+4) DICOM and normal image handling utilities
+- What: Implemented robust DICOM parsing and PNG generation with fallback support for JPEG/PNG images.
+- Files: `backend/app/utils/dicom.py`
+- Problems fixed:
+  - Handled `PhotometricInterpretation==MONOCHROME1` inversion.
+  - Normalized pixel intensity and converted to 3-channel RGB for visualization and models.
+  - Added `load_image()` to accept regular images (PNG/JPG) or DICOM.
+- Why: Many interviewers will test DICOM knowledge — addressing photometric interpretation, normalization, and multi-format support demonstrates practical experience.
+
+5) Frontend (Streamlit) with safe secrets handling
+- What: Built a Streamlit demo app to upload images and display predictions and heatmaps.
+- Files: `frontend/streamlit_app.py`
+- Problems fixed:
+  - Streamlit raised a FileNotFoundError when `secrets.toml` was missing. Fixed by falling back to environment variable `BACKEND_URL`.
+  - Pointed frontend to `http://backend:8000` within Docker to use service DNS.
+- Why Streamlit: fastest way to demonstrate visual results in an interview without building a full frontend stack.
+
+6) AI Predictor design (modular)
+- What: Created `Predictor` class with two modes:
+  - `baseline` (heuristic) — runs in every container by default.
+  - `pytorch` (optional) — lazy-loads `torch`/`torchvision` and a ResNet-18 backbone when enabled and a checkpoint is provided.
+- Files: `backend/app/ai/predictor.py`
+- Why design: Avoid shipping heavy ML libs by default; allow the project to demonstrate plug-in model capability without including model weights. ResNet-18 chosen for a compact, transferable backbone that is easy to understand in an interview.
+- Tradeoffs: DenseNet / CheXNet variants are more common for CXR tasks but are heavier; use them for production model integration later.
+
+7) Explainability (Grad-CAM fallback)
+- What: Implemented a fallback Grad-CAM overlay generator for demos; reserved full `pytorch-grad-cam` integration for when a trained model is available.
+- Files: `backend/app/ai/predictor.py`
+- Problems fixed: Initially the heatmap over-wrote the preview PNG. Changed outputs so preview is `uid.png` and heatmap is `uid.heat.png`.
+- Why: Demonstrates explainability pipeline without depending on a heavy model.
+
+8) Dockerization and compose orchestration
+- What: Added `Dockerfile` for backend & frontend and `docker-compose.yml` to orchestrate Postgres, backend, and frontend.
+- Files: `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`
+- Problems fixed:
+  - Initial Dockerfile used incorrect relative COPY paths which failed during build. Updated build contexts to use repository root and point Dockerfiles to subfolders.
+  - Some packages caused pip resolution issues in the demo environment (pytorch-related packages). Kept heavy ML packages optional and lazy-loaded them in code.
+- Why: Docker Compose demonstrates a realistic multi-service environment, useful for interviewing ops and deployment questions.
+
+9) Runtime fixes discovered during testing
+- Name resolution error: frontend could not resolve `backend` because backend crashed on model startup. Fixed by renaming the SQLAlchemy `metadata` field to `metadata_json`.
+- Streamlit secrets warning: fixed via environment fallback.
+- Static file serving: mounted and mounted directory via `FastAPI StaticFiles` so preview and heatmap images are reachable at `/static/`.
+
+10) Support for normal images and heuristic improvement
+- What: Added `image_to_numpy()` and `load_image()` to support PNG/JPG; improved the baseline heuristic to better detect pneumonia opacity.
+- Files: `backend/app/utils/dicom.py`, `backend/app/ai/predictor.py`
+- Why: Interviewers may not have DICOM files; accepting normal images makes demo easier and shows practical flexibility. Heuristic improved with CLAHE, local variance, lower-lung density, and edge density features rather than a single global intensity metric.
+
+11) Testing & Validation performed
+- Actions performed manually during development:
+  - `python -m compileall` to verify Python syntax across modified modules.
+  - `docker compose up --build` to build services and verify runtime logs.
+  - Upload tests via the Streamlit UI and `curl -F` for API contract checks.
+
+12) Documentation added and rationale
+- Files: `DOCUMENTATION.md` (this file), `README.md`
+- What: Documented architecture choices, tradeoffs, run commands, and next steps for production hardening.
+
+13) Known limitations and production path
+- Limitations today:
+  - Baseline heuristic is not a substitute for a validated clinical model.
+  - No authentication, audit logging, or PHI governance yet.
+  - Grad-CAM is demo-level until integrated with a trained model's activations.
+- Production path:
+  - Integrate a validated transfer-learned CXR model (DenseNet/CheXNet), use `pytorch-grad-cam` for real activation maps, add GPU-backed inference workers, use S3 for images, and add RBAC/audit for compliance.
+
+14) Why these choices (short interview bullets)
+- FastAPI: typed APIs and async; widely adopted in modern ML infra.
+- Streamlit: rapid visual demo, minimal frontend maintenance.
+- PyTorch (optional): research standard for medical imaging and easy grad-cam tooling.
+- ResNet-18 as demo backbone: small/fast/easy to load; switch to DenseNet for production performance.
+
+## Appendix — Quick file map of important changes
+- `backend/app/main.py`: mounted `/static` and enabled app startup table creation.
+- `backend/app/api/upload.py`: accepted multipart uploads, saved file to `uploads/`, used `load_image()`, saved `static/{uid}.png` and produced heatmap `static/{uid}.heat.png`.
+- `backend/app/utils/dicom.py`: added `load_image()` and robust normalization.
+- `backend/app/ai/predictor.py`: modular predictor with `baseline` heuristic and optional `pytorch` mode (lazy import), improved heuristic.
+- `backend/app/db/models.py`: renamed `metadata` → `metadata_json` to avoid SQLAlchemy reserved name conflict.
+- `frontend/streamlit_app.py`: updated uploader to accept `png/jpg/jpeg` and use `BACKEND_URL` env var.
+- `docker-compose.yml`: configured services, environment variables, and volumes for `uploads` and `static`.
+
+---
+This implementation log is written to be presented in an interview for a radiology AI team. If you want, I will commit this updated `DOCUMENTATION.md` and also add a one-page `INTERVIEW.md` that condenses talking points and demo steps into a 2-page handout.

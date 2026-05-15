@@ -1,6 +1,7 @@
 import os
 import numpy as np
-from ..utils.dicom import dicom_to_numpy
+import cv2
+from ..utils.dicom import load_image
 from typing import Dict
 
 # Heavy ML libraries are imported lazily only when needed (PREDICTOR_MODE=pytorch)
@@ -32,7 +33,7 @@ class Predictor:
         self.model.eval()
 
     def predict(self, dicom_path: str) -> Dict:
-        img = dicom_to_numpy(dicom_path)
+        img = load_image(dicom_path)
         if self.mode == "pytorch" and self.model is not None:
             x = self._preprocess(img)
             import torch
@@ -42,10 +43,35 @@ class Predictor:
             label = "pneumonia" if prob > 0.5 else "normal"
             return {"label": label, "score": prob}
 
-        # Baseline heuristic: mean intensity
-        mean = img.mean() / 255.0
-        score = float(max(0.0, min(1.0, (0.5 - mean) * 2 + 0.5)))
-        label = "pneumonia" if score > 0.5 else "normal"
+        return self._heuristic_pneumonia_score(img)
+
+    def _heuristic_pneumonia_score(self, img: np.ndarray) -> Dict:
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        h, w = gray.shape
+        cropped = gray[int(h * 0.15):int(h * 0.95), int(w * 0.10):int(w * 0.90)]
+
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        enhanced = clahe.apply(cropped)
+        blur = cv2.GaussianBlur(enhanced, (7, 7), 0)
+
+        _, otsu = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        dense_pixels = np.mean(blur > otsu * 0.8)
+
+        local_mean = cv2.blur(blur.astype(np.float32), (31, 31))
+        local_sq = cv2.blur(np.square(blur.astype(np.float32)), (31, 31))
+        local_var = np.maximum(0.0, local_sq - np.square(local_mean))
+        var_score = float(np.percentile(local_var, 90) / 255.0)
+
+        lower_region = blur[int(blur.shape[0] * 0.45) :, :]
+        _, lower_otsu = cv2.threshold(lower_region, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        lower_dense = np.mean(lower_region > lower_otsu * 0.8)
+
+        edges = cv2.Canny(blur, 30, 120)
+        edge_ratio = float(np.mean(edges > 0))
+
+        score = 0.28 * dense_pixels + 0.28 * lower_dense + 0.24 * var_score + 0.20 * edge_ratio
+        score = float(max(0.0, min(1.0, score)))
+        label = "pneumonia" if score > 0.42 else "normal"
         return {"label": label, "score": score}
 
     def _preprocess(self, img: np.ndarray):
@@ -63,7 +89,7 @@ class Predictor:
 
     def gradcam(self, dicom_path: str, png_preview_path: str = None) -> str:
         # Simple fallback heatmap for baseline mode
-        img = dicom_to_numpy(dicom_path)
+        img = load_image(dicom_path)
         h, w = img.shape[:2]
         heat = np.zeros((h, w), dtype=np.float32)
         # Emphasize darker regions (potential pathology)
@@ -74,6 +100,9 @@ class Predictor:
         import cv2
         cmap = cv2.applyColorMap((heat * 255).astype('uint8'), cv2.COLORMAP_JET)
         overlay = cv2.addWeighted(cmap, 0.5, cv2.cvtColor(img, cv2.COLOR_RGB2BGR), 0.5, 0)
-        out_path = png_preview_path or f"static/{os.path.basename(dicom_path)}.heat.png"
+        if png_preview_path:
+            out_path = png_preview_path.replace(".png", ".heat.png")
+        else:
+            out_path = f"static/{os.path.basename(dicom_path)}.heat.png"
         cv2.imwrite(out_path, overlay)
         return out_path

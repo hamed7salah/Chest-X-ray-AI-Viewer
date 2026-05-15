@@ -1,6 +1,9 @@
-import pydicom
+import os
+from typing import Optional
 import numpy as np
 import cv2
+from PIL import Image
+import pydicom
 
 
 def dicom_to_numpy(path: str) -> np.ndarray:
@@ -14,15 +17,41 @@ def dicom_to_numpy(path: str) -> np.ndarray:
     if getattr(ds, 'PhotometricInterpretation', '').upper() == 'MONOCHROME1':
         arr = np.max(arr) - arr
 
-    # Normalize to 0-1
+    return normalize_and_rgb(arr)
+
+
+def image_to_numpy(path: str) -> np.ndarray:
+    image = Image.open(path)
+    image = image.convert('RGB')
+    arr = np.asarray(image).astype(np.float32)
+    return normalize_and_rgb(arr)
+
+
+def load_image(path: str) -> np.ndarray:
+    _, ext = os.path.splitext(path)
+    ext = ext.lower()
+    if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.tiff'}:
+        return image_to_numpy(path)
+
+    try:
+        return dicom_to_numpy(path)
+    except Exception:
+        return image_to_numpy(path)
+
+
+def normalize_and_rgb(arr: np.ndarray) -> np.ndarray:
+    if arr.ndim == 2:
+        arr = cv2.cvtColor(arr.astype(np.uint8), cv2.COLOR_GRAY2RGB).astype(np.float32)
+    elif arr.shape[2] == 4:
+        arr = cv2.cvtColor(arr.astype(np.uint8), cv2.COLOR_RGBA2RGB).astype(np.float32)
+
     arr -= arr.min()
     if arr.max() > 0:
         arr /= arr.max()
-
-    # Convert to 3-channel for downstream models/visualization
     img = (arr * 255).astype(np.uint8)
-    img3 = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    return img3
+    if img.ndim == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    return img
 
 
 def save_png_from_array(arr, out_path: str):

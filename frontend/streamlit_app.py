@@ -17,14 +17,14 @@ except Exception:
 
 st.title("Chest X-ray AI Viewer")
 
-uploaded = st.file_uploader("Upload DICOM file", type=["dcm", "dicom"])
+uploaded = st.file_uploader("Upload chest X-ray image", type=["dcm", "dicom", "png", "jpg", "jpeg"])
 if uploaded is not None:
     files = {"file": (uploaded.name, uploaded.getvalue(), uploaded.type)}
     resp = requests.post(f"{BACKEND_URL}/api/upload", files=files)
     if resp.status_code == 200:
         data = resp.json()
         st.success(f"Prediction: {data.get('prediction')} (score={data.get('score')})")
-        png_url = f"{BACKEND_URL}{data.get('png_url') }"
+        png_url = f"{BACKEND_URL}{data.get('png_url')}"
         heatmap = data.get('heatmap_url')
         if png_url:
             try:
