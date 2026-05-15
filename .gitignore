@@ -1,3 +1,19 @@
+__pycache__/
+.venv/
+venv/
+env/
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache/
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+*.sqlite3
+uploads/
+*.log
+docker-compose.override.yml
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

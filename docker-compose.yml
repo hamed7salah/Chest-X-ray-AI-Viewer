@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chestxray
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/chestxray
+      UPLOAD_DIR: /data/uploads
+      STATIC_DIR: /data/static
+      PREDICTOR_MODE: baseline
+    volumes:
+      - ./uploads:/data/uploads
+      - ./static:/data/static
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      BACKEND_URL: "http://backend:8000"
+      STREAMLIT_SERVER_ENABLECORS: "false"
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
