@@ -33,10 +33,11 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     environment:
-      BACKEND_URL: "http://backend:8000"
-      STREAMLIT_SERVER_ENABLECORS: "false"
+      BACKEND_INTERNAL_URL: "http://backend:8000"
     ports:
       - "8501:8501"
+    volumes:
+      - ./static:/data/backend_static
     depends_on:
       - backend
 

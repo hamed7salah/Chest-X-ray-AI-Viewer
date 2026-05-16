@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chest X-ray AI Viewer</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Chest X-ray AI Viewer</h1>
+      <p class="subtitle">Fast image upload, review, and prior study comparison.</p>
+    </header>
+
+    <main>
+      <section class="panel upload-panel">
+        <h2>Upload</h2>
+        <form id="upload-form">
+          <label class="file-label">
+            Select chest X-ray image
+            <input type="file" id="image-file" accept=".dcm,.dicom,.png,.jpg,.jpeg" />
+          </label>
+          <button type="submit" class="primary-button">Upload</button>
+        </form>
+        <div id="status" class="status"></div>
+      </section>
+
+      <section class="panel settings-panel">
+        <h2>Controls</h2>
+        <label>Window center
+          <input type="range" id="window-center" min="0" max="255" value="128" />
+          <span id="window-center-value">128</span>
+        </label>
+        <label>Window width
+          <input type="range" id="window-width" min="1" max="255" value="128" />
+          <span id="window-width-value">128</span>
+        </label>
+        <label>Prior study
+          <select id="prior-select">
+            <option value="none">None</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="panel result-panel">
+        <div class="result-header">
+          <div>
+            <h2>Prediction</h2>
+            <p id="prediction-text">No image uploaded.</p>
+          </div>
+          <div id="score-summary" class="score-summary"></div>
+        </div>
+
+        <div class="image-grid">
+          <div class="image-card">
+            <h3>Current Study</h3>
+            <img id="current-image" alt="Current study preview" />
+          </div>
+          <div class="image-card">
+            <h3>Grad-CAM Heatmap</h3>
+            <img id="heatmap-image" alt="Current heatmap preview" />
+          </div>
+        </div>
+
+        <div class="feedback-card">
+          <h3>Feedback</h3>
+          <label>
+            Label
+            <select id="feedback-select">
+              <option value="No change">No change</option>
+              <option value="normal">normal</option>
+              <option value="pneumonia">pneumonia</option>
+            </select>
+          </label>
+          <label>
+            Comments
+            <textarea id="feedback-comment" placeholder="Optional review comments"></textarea>
+          </label>
+          <button id="submit-feedback" class="secondary-button">Submit feedback</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

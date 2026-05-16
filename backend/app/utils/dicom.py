@@ -54,6 +54,21 @@ def normalize_and_rgb(arr: np.ndarray) -> np.ndarray:
     return img
 
 
+def read_metadata(path: str) -> dict:
+    try:
+        ds = pydicom.dcmread(path, stop_before_pixels=True)
+        metadata = {
+            "PatientID": str(getattr(ds, "PatientID", "")),
+            "PatientName": str(getattr(ds, "PatientName", "")),
+            "StudyDate": str(getattr(ds, "StudyDate", "")),
+            "Modality": str(getattr(ds, "Modality", "")),
+            "StudyDescription": str(getattr(ds, "StudyDescription", "")),
+        }
+        return metadata
+    except Exception:
+        return {}
+
+
 def save_png_from_array(arr, out_path: str):
     # arr expected to be HxWx3 uint8 or HxW
     if arr.ndim == 2:

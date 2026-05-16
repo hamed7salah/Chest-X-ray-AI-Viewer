@@ -4,4 +4,4 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY frontend /app
 EXPOSE 8501
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8501", "app:app", "--workers", "1", "--threads", "4"]
