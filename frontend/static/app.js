@@ -51,10 +51,12 @@ function displayStudy(study) {
   currentStudy = study;
   predictionText.textContent = `${study.prediction} (score: ${study.score.toFixed(2)})`;
   updateScoreSummary(study);
-  currentImage.src = `/backend-static${study.png_url}`;
+  const imgFile = study.png_url.split('/').pop();
+  currentImage.src = `/backend-static/${imgFile}`;
   currentImage.style.filter = `contrast(${windowWidth.value}%) brightness(${windowCenter.value}%)`;
   if (study.heatmap_url) {
-    heatmapImage.src = `/backend-static${study.heatmap_url}`;
+    const heatFile = study.heatmap_url.split('/').pop();
+    heatmapImage.src = `/backend-static/${heatFile}`;
     heatmapImage.style.display = 'block';
   } else {
     heatmapImage.style.display = 'none';
@@ -133,9 +135,16 @@ async function loadPriorStudy() {
   if (!study) return;
   predictionText.textContent = `Prior: ${study.prediction} (score: ${study.score.toFixed(2)})`;
   updateScoreSummary(study);
-  currentImage.src = `/backend-static${study.png_url}`;
-  heatmapImage.src = study.heatmap_url ? `/backend-static${study.heatmap_url}` : '';
-  heatmapImage.style.display = study.heatmap_url ? 'block' : 'none';
+  const imgFile = study.png_url.split('/').pop();
+  currentImage.src = `/backend-static/${imgFile}`;
+  if (study.heatmap_url) {
+    const heatFile = study.heatmap_url.split('/').pop();
+    heatmapImage.src = `/backend-static/${heatFile}`;
+    heatmapImage.style.display = 'block';
+  } else {
+    heatmapImage.src = '';
+    heatmapImage.style.display = 'none';
+  }
 }
 
 uploadForm.addEventListener('submit', submitFile);
