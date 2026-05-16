@@ -24,7 +24,9 @@ main {
   display: grid;
   gap: 20px;
   padding: 24px 32px;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 1fr;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 .panel {
   background: white;
@@ -33,9 +35,20 @@ main {
   padding: 20px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
 }
+.panels-top {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+}
 .upload-panel, .settings-panel {
-  position: sticky;
-  top: 20px;
+  position: relative;
+  top: 0;
+}
+
+@media (min-width: 1000px) {
+  .panels-top {
+    grid-template-columns: minmax(280px, 320px) minmax(300px, 1fr);
+  }
 }
 .image-grid {
   display: grid;

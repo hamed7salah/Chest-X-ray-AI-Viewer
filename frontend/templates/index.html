@@ -13,34 +13,36 @@
     </header>
 
     <main>
-      <section class="panel upload-panel">
-        <h2>Upload</h2>
-        <form id="upload-form">
-          <label class="file-label">
-            Select chest X-ray image
-            <input type="file" id="image-file" accept=".dcm,.dicom,.png,.jpg,.jpeg" />
-          </label>
-          <button type="submit" class="primary-button">Upload</button>
-        </form>
-        <div id="status" class="status"></div>
-      </section>
+      <div class="panels-top">
+        <section class="panel upload-panel">
+          <h2>Upload</h2>
+          <form id="upload-form">
+            <label class="file-label">
+              Select chest X-ray image
+              <input type="file" id="image-file" accept=".dcm,.dicom,.png,.jpg,.jpeg" />
+            </label>
+            <button type="submit" class="primary-button">Upload</button>
+          </form>
+          <div id="status" class="status"></div>
+        </section>
 
-      <section class="panel settings-panel">
-        <h2>Controls</h2>
-        <label>Window center
-          <input type="range" id="window-center" min="0" max="255" value="128" />
-          <span id="window-center-value">128</span>
-        </label>
-        <label>Window width
-          <input type="range" id="window-width" min="1" max="255" value="128" />
-          <span id="window-width-value">128</span>
-        </label>
-        <label>Prior study
-          <select id="prior-select">
-            <option value="none">None</option>
-          </select>
-        </label>
-      </section>
+        <section class="panel settings-panel">
+          <h2>Controls</h2>
+          <label>Window center
+            <input type="range" id="window-center" min="0" max="255" value="128" />
+            <span id="window-center-value">128</span>
+          </label>
+          <label>Window width
+            <input type="range" id="window-width" min="1" max="255" value="128" />
+            <span id="window-width-value">128</span>
+          </label>
+          <label>Prior study
+            <select id="prior-select">
+              <option value="none">None</option>
+            </select>
+          </label>
+        </section>
+      </div>
 
       <section class="panel result-panel">
         <div class="result-header">

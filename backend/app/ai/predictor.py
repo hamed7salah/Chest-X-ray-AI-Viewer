@@ -105,8 +105,8 @@ class Predictor:
         return float(max(0.0, min(1.0, score)))
 
     def _calibrate_score(self, score: float) -> float:
-        # Simple logistic-based calibration to improve interpretability
-        calibrated = 1 / (1 + np.exp(-12 * (score - 0.35)))
+        # Use a gentler sigmoid calibration centered at 0.50 to reduce false positives.
+        calibrated = 1 / (1 + np.exp(-8 * (score - 0.50)))
         return float(max(0.0, min(1.0, calibrated)))
 
     def _ensemble_pneumonia_score(self, img: np.ndarray) -> Dict:
@@ -118,7 +118,7 @@ class Predictor:
         ensemble_score = float(np.mean(scores))
         uncertainty = float(np.std(scores))
         calibrated = self._calibrate_score(ensemble_score)
-        label = "pneumonia" if calibrated > 0.5 else "normal"
+        label = "pneumonia" if calibrated > 0.55 else "normal"
         return {
             "label": label,
             "score": calibrated,
